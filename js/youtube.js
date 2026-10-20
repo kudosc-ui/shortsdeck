@@ -98,12 +98,13 @@
   /* Google Identity Services "token model": opens Google's own consent popup. We never see a password.
      Returns the channel(s) the signed-in account selected. Access token (≈1 h) is kept in memory.
      For refresh tokens / long-lived access, use the authorization-code flow on a backend instead. */
-  async function connectYouTube() {
+  async function connectYouTube(opts) {
+    const silent = !!(opts && opts.silent);
     if (!isConfigured()) return Object.assign({}, DEMO, { code: 'NOT_CONFIGURED' });
     try { await loadGIS(); } catch (e) { return fail('GIS_LOAD', 'Could not load Google Sign-In. Check your connection or disable content blockers.'); }
     return new Promise(resolve => {
       const client = w.google.accounts.oauth2.initTokenClient({
-        client_id: clientId(), scope: CONFIG.SCOPES.join(' '), prompt: 'select_account',
+        client_id: clientId(), scope: CONFIG.SCOPES.join(' '), prompt: silent ? '' : 'select_account',
         callback: async resp => {
           if (!resp || resp.error) return resolve(fail((resp && resp.error) || 'AUTH_DENIED', 'Authorization was not completed.'));
           const exp = Date.now() + ((resp.expires_in || 3600) * 1000) - 30000;
@@ -112,6 +113,7 @@
           const list = (r.data.items || []).map(normChannel);
           if (!list.length) return resolve(fail('NO_CHANNEL', 'That Google account has no YouTube channel.'));
           list.forEach(c => { tokens[c.id] = { token: resp.access_token, exp }; });
+          rememberLinks(list.map(c => c.id));
           resolve({ ok: true, data: list });
         },
         error_callback: e => resolve(fail((e && e.type) || 'POPUP_CLOSED', 'The Google sign-in window was closed or blocked.'))
@@ -123,8 +125,44 @@
     const t = tokens[channelId];
     if (t && w.google && w.google.accounts && w.google.accounts.oauth2) { try { w.google.accounts.oauth2.revoke(t.token, () => {}); } catch (e) { /* ignore */ } }
     delete tokens[channelId];
+    forgetLink(channelId);
     return { ok: true };
   }
+
+
+  /* ---------- Stay connected (connect once, keep working) ----------
+     Google browser tokens last ~1 h and cannot be extended without a server. So we renew them silently:
+     the linked channel ids (public, non-sensitive) are remembered; a fresh token is requested quietly
+       • on app start, • ~5 min before expiry, • when the app comes back to the foreground / network returns,
+       • on the first tap after a renewal was blocked (browsers only allow Google's quiet window after a user gesture).
+     No password, secret or token is ever stored. */
+  const LINK_KEY = 'authlink';
+  const linked = () => { const v = Store.get(LINK_KEY, []); return Array.isArray(v) ? v : []; };
+  function rememberLinks(ids) { const a = linked(); ids.forEach(i => { if (a.indexOf(i) < 0) a.push(i); }); Store.set(LINK_KEY, a); }
+  function forgetLink(id) { Store.set(LINK_KEY, linked().filter(i => i !== id)); }
+  const needsRenewal = () => isConfigured() && linked().some(id => !tokens[id] || tokens[id].exp - Date.now() < 5 * 60 * 1000);
+  let renewing = null, blocked = false;
+  function renew() {
+    if (renewing || !needsRenewal() || navigator.onLine === false) return renewing || Promise.resolve(null);
+    renewing = connectYouTube({ silent: true }).then(r => {
+      renewing = null;
+      if (r.ok) { blocked = false; document.dispatchEvent(new CustomEvent('yt:auth-restored', { detail: { channelIds: r.data.map(c => c.id) } })); }
+      else blocked = true;                       // popup blocked / needs a tap → retry on next user gesture
+      return r;
+    }).catch(() => { renewing = null; blocked = true; return null; });
+    return renewing;
+  }
+  function startKeepAlive() {
+    if (!linked().length) return;
+    renew();
+    setInterval(renew, 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) renew(); });
+    w.addEventListener('online', renew);
+    w.addEventListener('focus', renew);
+    ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (blocked) renew(); }, { capture: true, passive: true }));
+  }
+  w.addEventListener('DOMContentLoaded', () => setTimeout(startKeepAlive, 0));
+  if (document.readyState !== 'loading') setTimeout(startKeepAlive, 0);
 
   /* ---------- 2. Channels & videos ---------- */
   /* GET /youtube/v3/channels?part=snippet,statistics&mine=true  (1 quota unit) */
@@ -258,5 +296,5 @@
   }
 
   w.YT = { CONFIG: { SCOPES: CONFIG.SCOPES, BACKEND_URL: CONFIG.BACKEND_URL }, SCOPE_INFO, DEMO_MESSAGE, DEMO_HINT, DEMO, isConfigured, isLive, hasToken, clientId,
-    connectYouTube, disconnect, getChannels, getChannelVideos, uploadVideo, scheduleVideo, rescheduleVideo, getVideoStatus, getComments, replyToComment, getAnalytics, buildUploadRequest };
+    connectYouTube, renew, disconnect, getChannels, getChannelVideos, uploadVideo, scheduleVideo, rescheduleVideo, getVideoStatus, getComments, replyToComment, getAnalytics, buildUploadRequest };
 })(window);

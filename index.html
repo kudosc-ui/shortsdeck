@@ -7,6 +7,13 @@
 <meta name="color-scheme" content="dark light">
 <meta name="referrer" content="no-referrer">
 <title>ShortsDeck — Multi-channel Shorts manager</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ShortsDeck">
 <link rel="stylesheet" href="style.css">
 <script src="js/theme-boot.js"></script>
 </head>
@@ -88,5 +95,6 @@
 <script src="js/scheduler.js"></script>
 <script src="js/comments.js"></script>
 <script src="app.js"></script>
+<script>if("serviceWorker"in navigator)addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})});</script>
 </body>
 </html>

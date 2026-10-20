@@ -103,3 +103,15 @@ Set `CONFIG.BACKEND_URL` in `js/youtube.js` as the single place to point the app
 ## Accessibility
 
 Keyboard reachable controls, visible focus rings, ARIA labels on icon buttons, focus-trapped dialogs (Esc closes), `prefers-reduced-motion` respected, ≥44px touch targets, contrast tuned for dark and light themes.
+
+## PWA → APK
+
+Files added: `manifest.webmanifest`, `sw.js` (offline app shell), `offline.html`, `icons/`, `.well-known/assetlinks.json`.
+
+1. Host the folder over **HTTPS** (GitHub Pages, Netlify, Cloudflare Pages…). Add that exact origin to your Google OAuth client's *Authorized JavaScript origins*.
+2. Go to <https://www.pwabuilder.com>, enter your site URL → **Package for stores → Android** → download the APK/AAB.
+3. PWABuilder shows a SHA-256 fingerprint: put it and your package name in `.well-known/assetlinks.json`, redeploy. This removes the browser address bar inside the app.
+
+## Staying connected
+
+After you connect once, the app remembers which channels are linked (ids only) and silently renews Google's 1-hour access token at start-up, ~5 min before expiry, on resume and when back online. If the browser blocks the silent renewal, it completes on your next tap. Fully server-side, never-expiring access (refresh tokens) still needs a backend — see "What needs a backend".

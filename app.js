@@ -243,8 +243,10 @@
   /* auth-expiry from the API layer */
   document.addEventListener('yt:auth-expired', e => {
     (e.detail.channelIds || []).forEach(id => { w.Activity.add('auth', 'warn', 'Authorization expired for ' + Store.channelName(id)); w.Notify.add({ type: 'auth', title: 'YouTube authorization expired', body: 'Reconnect ' + Store.channelName(id) + ' to continue.' }); });
-    U.toast('YouTube authorization expired. Reconnect your channel.', 'warn', 6000); App.rerender();
+    if (w.YT.renew) w.YT.renew(); U.toast('Renewing YouTube connection… tap anywhere if it doesn\'t reconnect.', 'warn', 5000); App.rerender();
   });
+
+  document.addEventListener('yt:auth-restored', () => { try { Store.channels().forEach(c => { if (c.status === 'expired') c.status = 'connected'; }); } catch (e) {} App.rerender(); if (App.refreshChrome) App.refreshChrome(); });
 
   /* ------------------------------------------------------------ boot */
   function boot() {

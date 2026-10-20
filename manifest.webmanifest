@@ -1,0 +1,23 @@
+{
+  "name": "ShortsDeck — Multi-channel Shorts manager",
+  "short_name": "ShortsDeck",
+  "description": "Upload, schedule and manage YouTube Shorts across all your channels.",
+  "id": "/",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Upload a Short", "url": "./index.html#/upload", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Comments", "url": "./index.html#/comments", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
