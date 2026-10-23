@@ -49,6 +49,7 @@
     current = route();
     const main = U.$('#main'), y = window.scrollY;
     w.Analytics.Charts.q = [];
+    document.body.classList.remove('up-page');
     let html = '', mount = null;
     try {
       switch (current) {
@@ -66,17 +67,19 @@
         case 'settings': html = Settings.render(); break;
       }
     } catch (e) { console.error(e); html = U.errorState('This page failed to load.', 'reload'); }
-    main.innerHTML = '<div class="page">' + html + '</div>';
+    main.innerHTML = '<div class="page' + (opts.keepScroll ? ' still' : '') + '">' + html + '</div>';
     U.$('#page-title').textContent = PAGES[current].title;
     document.title = PAGES[current].title + ' · ShortsDeck';
-    markNav(); refreshBadges();
+    markNav(); refreshBadges(); authBar();
     if (mount) { try { mount(); } catch (e) { console.error(e); } }
-    if (opts.keepScroll) window.scrollTo(0, y); else { window.scrollTo(0, 0); if (!opts.silent) main.focus({ preventScroll: true }); }
+    if (opts.keepScroll) window.scrollTo({ top: y, left: 0, behavior: 'instant' }); else { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); if (!opts.silent) main.focus({ preventScroll: true }); }
   }
   window.addEventListener('hashchange', () => { const m = U.$('#modal-root'); if (m) m.innerHTML = ''; document.body.classList.remove('lock'); render(); });
 
   const App = {
-    rerender() { render({ keepScroll: true, silent: true }); },
+    /* The Upload page keeps its own live form (selected video, channels, text). A background refresh must never wipe it,
+       so it is skipped there unless forced (e.g. after the user changed channels). */
+    rerender(force) { if (current === 'upload' && force !== true) { if (w.Uploads && w.Uploads.refreshChannels) w.Uploads.refreshChannels(); return; } render({ keepScroll: true, silent: true }); },
     rerenderIf(p) { if (current === p) App.rerender(); },
     refreshBadges,
     refreshChrome() { chrome(); },
@@ -188,6 +191,7 @@
       let h = '<div class="stack">';
       h += acc('set-accounts', 'key', 'YouTube accounts', '<div class="stack"><div class="row between wrap"><span class="muted">Mode</span>' + modePill() + '</div>' +
         '<div class="field"><label for="s-cid">Google OAuth Client ID <span class="counter">public value</span></label><input class="input" id="s-cid" placeholder="123456-abc.apps.googleusercontent.com" value="' + U.esc(s.clientId) + '" data-chg="set-cid" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="hint">Paste only the <b>Client ID</b>. Never paste a client secret here — it would be exposed to anyone who opens the page.</div></div>' +
+        '<div class="field"><label for="s-bu">Sign-in server <span class="counter">optional · stays signed in</span></label><input class="input" id="s-bu" inputmode="url" placeholder="https://shortsdeck-auth.yourname.workers.dev" value="' + U.esc(s.backendUrl) + '" data-chg="set-bu" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="hint">' + (YT.mode() === 'server' ? '<b>On</b> — your channels renew themselves silently; no more re-login.' : 'Off — Google only allows 1-hour browser sign-ins, so ShortsDeck renews them with one tap. Deploy <code>worker/</code> (see BACKEND.md) and paste its address here to never be asked again.') + ' After changing it, reconnect your channels once.</div></div>' +
         '<div class="row wrap"><button type="button" class="btn sm primary" data-act="connect">' + U.icon('plus', 'sm') + 'Connect channel</button>' + (Store.isDemo() ? '' : '<button type="button" class="btn sm" data-act="to-demo">Switch to demo data</button>') + '</div></div>');
       h += acc('set-defaults', 'upload', 'Default upload settings', '<div class="stack"><div class="row2"><div class="field"><label for="s-vis">Default privacy</label><select class="select" id="s-vis" data-chg="set-field" data-k="defaults.visibility">' + w.Uploads.VIS.map(x => '<option value="' + x[0] + '" ' + (d.visibility === x[0] ? 'selected' : '') + '>' + x[1] + '</option>').join('') + '</select></div>' +
         '<div class="field"><label for="s-cat">Default category</label><select class="select" id="s-cat" data-chg="set-field" data-k="defaults.category">' + w.Uploads.CATS.map(x => '<option value="' + x[0] + '" ' + (String(d.category) === x[0] ? 'selected' : '') + '>' + U.esc(x[1]) + '</option>').join('') + '</select></div></div>' +
@@ -197,7 +201,7 @@
       h += acc('set-auto', 'bolt', 'Comment automation', '<div class="stack"><div class="kv"><div><span class="k">Mode</span><span class="v">' + (s.automation.mode === 'auto' ? 'Automatic' : 'Manual approval') + '</span></div><div><span class="k">Limits</span><span class="v">' + s.automation.maxPerHour + ' per hour · ' + s.automation.maxPerUserPerDay + ' per user per day</span></div></div><a class="btn sm" href="#/automation">' + U.icon('bolt', 'sm') + 'Open Automation</a></div>');
       h += acc('set-notify', 'bell', 'Notifications', ['upload:Upload results', 'comment:New comments', 'error:Failures', 'auth:Authorization alerts', 'schedule:Scheduled Shorts'].map(x => { const p = x.split(':'); return sr(p[1], '', U.sw('set-field', n[p[0]], p[1], 'data-k="notify.' + p[0] + '"')); }).join(''));
       h += acc('set-theme', 'sun', 'Theme', '<div class="seg" role="group" aria-label="Theme">' + [['dark', 'Dark mode'], ['light', 'Light mode'], ['system', 'System']].map(x => '<button type="button" data-act="set-theme" data-t="' + x[0] + '" aria-pressed="' + (s.theme === x[0]) + '">' + x[1] + '</button>').join('') + '</div>');
-      h += acc('set-sec', 'shield', 'Security & data', '<div class="stack"><ul class="checks"><li>' + U.icon('check', 'sm') + '<span>No password is ever requested. Sign-in happens on Google\'s page.</span></li><li>' + U.icon('check', 'sm') + '<span>Access tokens live in memory only and disappear when you close the tab.</span></li><li>' + U.icon('check', 'sm') + '<span>No client secret exists in this app. Only the public Client ID is stored.</span></li><li>' + U.icon('check', 'sm') + '<span>Drafts, schedules, rules and templates are stored on this device (' + (Store.persistent ? 'localStorage' : 'memory only — storage is blocked') + ').</span></li></ul>' +
+      h += acc('set-sec', 'shield', 'Security & data', '<div class="stack"><ul class="checks"><li>' + U.icon('check', 'sm') + '<span>No password is ever requested. Sign-in happens on Google\'s page.</span></li><li>' + U.icon('check', 'sm') + '<span>Only Google\'s 1-hour access token is cached on this device so a reload does not sign you out. It is never sent anywhere except Google.</span></li><li>' + U.icon('check', 'sm') + '<span>No client secret exists in this app. Only the public Client ID is stored.</span></li><li>' + U.icon('check', 'sm') + '<span>Drafts, schedules, rules and templates are stored on this device (' + (Store.persistent ? 'localStorage' : 'memory only — storage is blocked') + ').</span></li></ul>' +
         '<div class="row wrap"><button type="button" class="btn sm" data-act="reset-demo">' + U.icon('refresh', 'sm') + 'Reset demo data</button><button type="button" class="btn sm danger" data-act="wipe">' + U.icon('trash', 'sm') + 'Clear all local data</button></div></div>');
       return h + '</div>';
     }
@@ -209,6 +213,11 @@
     setPath(t.dataset.k, v); U.toast('Saved.', 'ok', 1400);
   });
   U.chg('set-tz', t => { Store.saveSettings({ timezone: t.value }); U.toast('Timezone set to ' + t.value + '.', 'ok'); });
+  U.chg('set-bu', t => {
+    const v = t.value.trim().replace(/\/+$/, '');
+    if (v && !/^https:\/\/[^\s/]+(\/\S*)?$/.test(v)) { U.toast('The sign-in server address must start with https://', 'err'); return; }
+    Store.saveSettings({ backendUrl: v }); U.toast(v ? 'Sign-in server saved. Reconnect your channels once.' : 'Sign-in server removed.', 'ok'); App.rerender(true);
+  });
   U.chg('set-cid', t => {
     const v = t.value.trim();
     if (/GOCSPX|client_secret/i.test(v)) { t.value = ''; U.toast('That looks like a client SECRET. Never put secrets in a web page — only the Client ID.', 'err', 7000); return; }
@@ -243,10 +252,28 @@
   /* auth-expiry from the API layer */
   document.addEventListener('yt:auth-expired', e => {
     (e.detail.channelIds || []).forEach(id => { w.Activity.add('auth', 'warn', 'Authorization expired for ' + Store.channelName(id)); w.Notify.add({ type: 'auth', title: 'YouTube authorization expired', body: 'Reconnect ' + Store.channelName(id) + ' to continue.' }); });
-    if (w.YT.renew) w.YT.renew(); U.toast('Renewing YouTube connection… tap anywhere if it doesn\'t reconnect.', 'warn', 5000); App.rerender();
+    if (w.YT.renew) w.YT.renew(); authBar(); App.rerender();
   });
 
-  document.addEventListener('yt:auth-restored', () => { try { Store.channels().forEach(c => { if (c.status === 'expired') c.status = 'connected'; }); } catch (e) {} App.rerender(); if (App.refreshChrome) App.refreshChrome(); });
+  document.addEventListener('yt:auth-restored', () => {
+    try { const L = Store.channels(); let ch = false; L.forEach(c => { if (c.status === 'expired' && YT.hasToken(c.id)) { c.status = 'connected'; ch = true; } }); if (ch) Store.saveCol('channels', L); } catch (e) { /* ignore */ }
+    authBar(); App.rerender(); if (App.refreshChrome) App.refreshChrome();
+  });
+  function authBar() {
+    const el = U.$('#auth-bar'); if (!el) return;
+    const n = Store.isDemo() ? 0 : YT.needsAttention();
+    if (!n) { el.hidden = true; el.innerHTML = ''; return; }
+    el.hidden = false;
+    el.innerHTML = '<div class="authbar" role="status">' + U.icon('lock', 'sm') + '<span>YouTube session paused for ' + U.plural(n, 'channel') + '. One tap resumes it.</span><button type="button" class="btn xs primary" data-act="auth-resume">Resume</button></div>';
+  }
+  U.act('auth-resume', async t => {
+    U.busy(t, true);
+    const r = await YT.renewAll(true);
+    U.busy(t, false); authBar();
+    U.toast(r.ok ? 'YouTube session resumed.' : (r.renewed && r.renewed.length ? 'Some channels resumed — tap Resume again for the rest.' : 'Could not resume. Allow pop-ups for this site, then tap Resume again.'), r.ok ? 'ok' : 'warn');
+  });
+  document.addEventListener('yt:auth-state', authBar);
+  App.authBar = authBar;
 
   /* ------------------------------------------------------------ boot */
   function boot() {

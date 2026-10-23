@@ -20,6 +20,7 @@
     theme: 'dark',
     timezone: null,
     clientId: '',               // PUBLIC OAuth client ID only. Never a secret.
+    backendUrl: '',             // Optional sign-in server (see BACKEND.md) → never-expiring sign-in.
     defaults: { visibility: 'public', category: '28', tags: 'shorts, coding, webdev', description: 'Subscribe for more Shorts!', appendShorts: true },
     automation: { mode: 'manual', maxPerHour: 8, maxPerUserPerDay: 1 },
     notify: { upload: true, comment: true, error: true, auth: true, schedule: true }

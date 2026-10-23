@@ -114,4 +114,10 @@ Files added: `manifest.webmanifest`, `sw.js` (offline app shell), `offline.html`
 
 ## Staying connected
 
-After you connect once, the app remembers which channels are linked (ids only) and silently renews Google's 1-hour access token at start-up, ~5 min before expiry, on resume and when back online. If the browser blocks the silent renewal, it completes on your next tap. Fully server-side, never-expiring access (refresh tokens) still needs a backend — see "What needs a backend".
+- **Reloads no longer sign you out**: Google's 1-hour access token is cached on this device until it expires.
+- **Browser-only mode**: when it expires, ShortsDeck tries a quiet renewal; if the browser blocks it, a yellow **Resume** bar appears and one tap renews every channel. Starting an upload also renews automatically.
+- **Never expire (optional)**: deploy `worker/` (see `BACKEND.md`, free Cloudflare plan) and paste its address in Settings → Sign-in server. Refresh tokens then live on that server and renewal is silent.
+
+## Uploads
+
+Full-screen 3-step flow (Details → Channels → Visibility). Uploads are chunked (8 MB), retry after dropped connections, run two channels at a time, keep the screen awake, set thumbnails, and move from Processing to Published/Failed automatically with plain-language errors.

@@ -1,5 +1,5 @@
 /* ShortsDeck service worker — app shell works offline. Google/YouTube requests are NEVER cached or touched. */
-const VERSION = 'shortsdeck-v1';
+const VERSION = 'shortsdeck-v2';
 const SHELL = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest', './offline.html',
   './js/theme-boot.js', './js/util.js', './js/storage.js', './js/demo-data.js', './js/notifications.js', './js/youtube.js',
   './js/auth.js', './js/analytics.js', './js/uploads.js', './js/scheduler.js', './js/comments.js',
